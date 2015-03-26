@@ -1,51 +1,126 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-var app = {
-    // Application Constructor
-    initialize: function() {
-        this.bindEvents();
-    },
-    // Bind Event Listeners
-    //
-    // Bind any events that are required on startup. Common events are:
-    // 'load', 'deviceready', 'offline', and 'online'.
-    bindEvents: function() {
-        document.addEventListener('deviceready', this.onDeviceReady, false);
-    },
-    // deviceready Event Handler
-    //
-    // The scope of 'this' is the event. In order to call the 'receivedEvent'
-    // function, we must explicitly call 'app.receivedEvent(...);'
-    onDeviceReady: function() {
-        app.receivedEvent('deviceready');
-    },
-    // Update DOM on a Received Event
-    receivedEvent: function(id) {
-        var parentElement = document.getElementById(id);
-        var listeningElement = parentElement.querySelector('.listening');
-        var receivedElement = parentElement.querySelector('.received');
+var pages = [], links = [];
+var numLinks = 0;
+var numPages = 0;
+var pageTime = 800;
 
-        listeningElement.setAttribute('style', 'display:none;');
-        receivedElement.setAttribute('style', 'display:block;');
+var pageshow = document.createEvent("CustomEvent");
+pageshow.initEvent("pageShow",false,true);
 
-        console.log('Received Event: ' + id);
+
+document.addEventListener("deviceready", function() {
+    console.log("deviceready");
+    findContact();
+    detectTouchSupport();
+});
+
+document.addEventListener("DOMContentLoaded", function(){
+    pages = document.querySelectorAll('[data-role="page"]');
+    numPages = pages.length;
+    links = document.querySelectorAll('[data-role="pagelink"]');
+    numLinks = links.length;
+    
+    for(var i=0; i<numLinks; i++){
+        links[i].addEventListener("click",handleNav,false);
+    }
+    
+    for(var p=0; p<numPages; p++){
+        pages[p].addEventListener("pageShow",handlePageShow,false);
+        
+    }
+    loadPage(null);
+    
+    
+}
+
+function findContact()
+{
+    var options = new ContactFindOptions();
+    options.filter = "";
+    options.multiple = true;
+    var fields = [ "displayName", "name" ];
+    navigator.contacts.find( fields, onSuccess, onError, options );
+    console.log("findContact");
+};
+
+function onSuccess(contacts)
+{
+    var c = Math.floor(Math.random() * contacts.length);
+    var newPerson = document.getElementById("newPerson");
+    newPerson.innerHTML = "Name: " + contacts[c].name.formatted + "<br>" + "Phone: " + contacts[c].phoneNumbers[0].value;
+        console.log("onSuccess");
+
+};
+
+function onError (contactError)
+{
+    console.log( "Could not retrieve contacts" );
+};
+
+function detectTouchSupport(){
+    msGesture = navigator && navigator.msPointerEnabled && navigator.msMaxTouchPoints > 0 && MSGesture;
+    touchSupport = (("ontouchstart" in window) || msGesture || (window.DocumentTouch && document instanceof DocumentTouch));
+        console.log("detectTouchSupport");
+
+    return touchSupport;
+};
+
+function touchHandler(ev){
+    if(ev.type == "touchend")
+    {
+        ev.preventDefault();
+        
+        var touch = ev.changedTouches[0];
+        var newEvt = document.createEvent("MouseEvent");
+        
+        newEvt.initMouseEvent("click",true,true,window,1,touch.screenX,touch.screenY,touch.clientX,touch.clientY);
+        ev.currentTarget.dispatchEvent(newEvt);
+            console.log("touchHandler");
+
     }
 };
 
-app.initialize();
+function handleNav(ev){
+    ev.preventDefault();
+    var href = ev.target.href;
+    var parts = href.split("#");
+    loadPage(parts[1]);
+        console.log("handleNav");
+
+    return false;
+};
+
+function handlePageShow(ev){
+    ev.target.className = "active";
+        console.log("handlePageShow");
+
+};
+
+function loadPage(url){
+    if(url == null){
+        pages[0].className = "active";
+        history.replaceState(null,null,"#home");
+    }
+    else{
+        for(var i=0; i<numPages; i++){
+            pages[i].className = "hidden";
+            
+            if(pages[i].id == url){
+                pages[i].className = "show";
+                history.pushState(null,null,"#" + url);
+                setTimeout(addDispatch,50,i);
+            }
+        }
+        for(var t=0; t<numLinks; t++){
+            links[t].className = "";
+            if(links[t].href == location.href){
+                links[t].className = "activetab";
+            }
+        }
+    }
+};
+
+function addDispatch(num){
+    pages[num].dispatchEvent(pageshow);
+        console.log("addDispatch");
+
+};
